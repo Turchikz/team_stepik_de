@@ -73,6 +73,42 @@ df_report = df_DDP[['Артикул', 'Номенклатура', 'DDP', 'Кур
 df_report.to_excel(f"DDP_на_{Date_report}.xlsx", sheet_name=f'DDP_{Date_report}', index=False) # Изменяем названия файла на требуемое при необходимости
 df_spr.to_excel(f"СПР.ЖЦ+Бренд_{Date_report}.xlsx", sheet_name=f'ЖЦ+Бренд_{Date_report}', index=False) # Изменяем названия файла на требуемое при необходимости
 
+
+# НОВАЯ ФУНКЦИЯ: Анализ статистики по данным
+def analyze_data_statistics(df):
+    """
+    Функция для анализа базовой статистики данных
+    """
+    print("\n" + "="*50)
+    print("БАЗОВАЯ СТАТИСТИКА ДАННЫХ")
+    print("="*50)
+    
+    # Общая информация
+    total_products = len(df)
+    total_cost = df['Себестоимость ИТОГ, руб'].sum()
+    avg_cost = df['Себестоимость ИТОГ, руб'].mean()
+    
+    print(f"Общее количество товаров: {total_products}")
+    print(f"Общая себестоимость: {total_cost:,.2f} руб")
+    print(f"Средняя себестоимость: {avg_cost:,.2f} руб")
+    
+    # Статистика по брендам
+    print(f"\nРаспределение по брендам:")
+    brand_stats = df['Бренд'].value_counts()
+    for brand, count in brand_stats.items():
+        percentage = (count / total_products) * 100
+        print(f"  {brand}: {count} товаров ({percentage:.1f}%)")
+    
+    # Топ-5 самых дорогих товаров
+    print(f"\nТоп-5 самых дорогих товаров:")
+    top_expensive = df.nlargest(5, 'Себестоимость ИТОГ, руб')[['Артикул', 'Номенклатура', 'Бренд', 'Себестоимость ИТОГ, руб']]
+    for idx, row in top_expensive.iterrows():
+        print(f"  {row['Артикул']} - {row['Бренд']}: {row['Себестоимость ИТОГ, руб']:,.2f} руб")
+
+# Вызов новой функции
+analyze_data_statistics(df_report)
+
+
 #df_DDP
 display(df_report)
 df_report.info()
