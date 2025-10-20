@@ -20,14 +20,15 @@ df_mag = pd.read_excel('Данные для расчета трафика.xlsx',
 df = df.iloc[14:]
 df = df.dropna(axis=1, how='all')
 df = df.reset_index(drop=True)
-df = df.drop([1,2,3,8,11,12]).T
+df = df.drop([1,2,3,8,11,12])
+df = df.T
 df.columns = df.iloc[0]
 df = df.reset_index(drop=True)
 df = df.drop([0])
 df = df.rename(columns={'Тип показателя':"Магазины"})
 
 # Удаляем лишние/закрытые магазины
-StopList =['РЦ "Победа" Ритейл', 
+StopList = ['РЦ "Победа" Ритейл', 
            'РЦ «Родина» ИНЕТ', 
            'РЦ «Родина» РИТЕЙЛ',
            '0005 Казань, Победа, ул. Закиева д.1',
@@ -59,12 +60,12 @@ StopList =['РЦ "Победа" Ритейл',
            '0107 МО Химки, КОРНЕР МЕГА, микрорайон ИКЕА, 2',
            '0106 Н. Новгород, КОРНЕР МЕГА, а/д Волга, Федяково',
            '0108 Москва, КОРНЕР МЕГА ТС, Калужское шоссе 21км',
-           '0114 Новокузнецк, КОРНЕР ТРЦ Планета, ул.Доз, 10а',
-            0]
+           '0114 Новокузнецк, КОРНЕР ТРЦ Планета, ул.Доз, 10а']
 
 # Заменяем пустые значения на 0 
 df = df.fillna(0)
 
+# Удаляем магазины из стоп-листа
 indexMag = df[(df['Магазины'].isin(StopList))].index
 df.drop(indexMag, inplace=True)
 
@@ -72,51 +73,66 @@ df.drop(indexMag, inplace=True)
 number = range(1, len(df) + 1)
 
 # Добавляем новый столбец '№ п/п' в начало датафрейма
-df.insert(0, '№ п/п', number)
+df.insert(0, '№ п/п', list(number))
 
 # Проверяем корректность выгрузки данных в 1С по магазинам.
 list_mag = df['Магазины'].values.tolist()
 df_mag['Result'] = np.where(df_mag['Магазины'].isin(list_mag), 'Данные есть', 'Н/Д')
-df_mag = df_mag[df_mag['Result'] == 'Н/Д']
+df_mag_check = df_mag[df_mag['Result'] == 'Н/Д']  # Исправлено: создаем новый DataFrame
 
 # Сохраняем отчеты в Excel
 df.to_excel(f"Отчет за день за_{short_date}.xlsx", sheet_name=f'Отчет за день за_{short_date}', index=False)
-df_mag.to_excel(f"Отчет по магазинам за_{short_date}.xlsx")
+df_mag_check.to_excel(f"Отчет по магазинам за_{short_date}.xlsx", index=False)  # Исправлено: используем правильный DataFrame
 
-# Прописываем функцию на вычисление суммы по столбцу
+# Функция на вычисление суммы по столбцу
 def sum_col(ws, col, col_top=2, col_start=1, tight=False):
-    col_len = len(ws[col])
+    col_len = ws.max_row
     if tight:
-        col_len -= next(i for i, x in enumerate(reversed(ws[col])) if x.value is not None)
+        # Находим последнюю непустую строку
+        for row in range(ws.max_row, 0, -1):
+            if ws[f'{col}{row}'].value is not None:
+                col_len = row
+                break
     ws[f'{col}{col_start}'] = f'=SUM({col}{col_top}:{col}{col_len})'
 
-# Прописываем функцию на вычисление среднего по столбцу
+# Функция на вычисление среднего по столбцу
 def avg_col(ws, col, col_top=2, col_start=1, tight=False):
-    col_len = len(ws[col])
+    col_len = ws.max_row
     if tight:
-        col_len -= next(i for i, x in enumerate(reversed(ws[col])) if x.value is not None)
+        # Находим последнюю непустую строку
+        for row in range(ws.max_row, 0, -1):
+            if ws[f'{col}{row}'].value is not None:
+                col_len = row
+                break
     ws[f'{col}{col_start}'] = f'=AVERAGE({col}{col_top}:{col}{col_len})'
 
-# Прописываем специальную функцию на вычисление среднего по столбцу Е
-def avg_col_f(ws, col1, col_top1=2, col2=3, col_top2=2):
+# Специальная функция на вычисление среднего по столбцу Е
+def avg_col_f(ws, col1, col_top1=2, col2='D', col_top2=2):
+    col_len = ws.max_row
     
-    col_len1 = len(ws[col1])
-    tuple(ws[f'{col1}{col_top1}:{col1}{col_len1}'])
-    cells1=[]
-    for rowOfCellObjects in ws[f'{col1}{col_top1}:{col1}{col_len1}']:
-        for cellObj in rowOfCellObjects:
-            cells1.append(cellObj.value)
-    cells1 = list(map(float, cells1))
+    cells1 = []
+    for row in range(col_top1, col_len + 1):
+        cell_value = ws[f'{col1}{row}'].value
+        if cell_value is not None:
+            try:
+                cells1.append(float(cell_value))
+            except (ValueError, TypeError):
+                continue
     
-    col_len2 = len(ws[col2])
-    tuple(ws[f'{col2}{col_top2}:{col2}{col_len2}'])
-    cells2=[]
-    for rowOfCellObjects in ws[f'{col2}{col_top2}:{col2}{col_len2}']:
-        for cellObj in rowOfCellObjects:
-            cells2.append(cellObj.value)
-    cells2 = list(map(float, cells2))
+    cells2 = []
+    for row in range(col_top2, col_len + 1):
+        cell_value = ws[f'{col2}{row}'].value
+        if cell_value is not None:
+            try:
+                cells2.append(float(cell_value))
+            except (ValueError, TypeError):
+                continue
     
-    ws['F1'] = sum(cells1)/sum(cells2)
+    if cells2 and sum(cells2) != 0:
+        result = sum(cells1) / sum(cells2)
+        ws['F1'] = result
+    else:
+        ws['F1'] = 0
 
 # Загружаем нужный файл эксель в работу
 wb = load_workbook(f"Отчет за день за_{short_date}.xlsx")
@@ -125,72 +141,71 @@ wb = load_workbook(f"Отчет за день за_{short_date}.xlsx")
 ws = wb[f'Отчет за день за_{short_date}']
 
 # Добавляем пустую строку сверху
-ws.insert_rows(0)
+ws.insert_rows(1)
 
 # Проводим нужные вычисления
 sum_col(ws, 'C', col_top=3, col_start=1)
 sum_col(ws, 'D', col_top=3, col_start=1, tight=True)
 avg_col(ws, 'E', col_top=3, col_start=1, tight=True)
-avg_col_f(ws, 'C', col_top1=3, col2 = 'D', col_top2=3)
+avg_col_f(ws, 'C', col_top1=3, col2='D', col_top2=3)
 sum_col(ws, 'G', col_top=3, col_start=1, tight=True)
 sum_col(ws, 'H', col_top=3, col_start=1, tight=True)
 
 # Форматируем шрифт у 2-х первых строчек
 for row in ws.iter_rows(min_col=1, max_col=8, max_row=2):
     for cell in row:
-        ws[str(cell.coordinate)].font = Font(bold=True, size=11)
+        cell.font = Font(bold=True, size=11)
 
 # Форматируем фон ячеек у 1-й строчки
 for row in ws.iter_rows(min_col=1, max_col=8, max_row=1):
     for cell in row:
-        ws[str(cell.coordinate)].fill = PatternFill(start_color="FFE4C4", end_color="FFE4C4", fill_type="solid")
+        cell.fill = PatternFill(start_color="FFE4C4", end_color="FFE4C4", fill_type="solid")
 
 # Форматируем фон ячеек у 2-й строчки
 for row in ws.iter_rows(min_col=1, max_col=8, min_row=2, max_row=2):
     for cell in row:
-        ws[str(cell.coordinate)].fill = PatternFill(start_color="BCEE68", end_color="BCEE68", fill_type="solid")
+        cell.fill = PatternFill(start_color="BCEE68", end_color="BCEE68", fill_type="solid")
 
 # Форматируем границы ячеек для всех ячеек
-for row in ws.iter_rows():
+for row in ws.iter_rows(min_row=1, max_row=ws.max_row, min_col=1, max_col=8):
     for cell in row:
-        # using str() on cell.coordinate to use it in sheet['Cell_here']
-            ws[str(cell.coordinate)].border =  Border(left=Side(style='thin'), 
-                                                      right=Side(style='thin'), 
-                                                      top=Side(style='thin'), 
-                                                      bottom=Side(style='thin'))
+        cell.border = Border(left=Side(style='thin'), 
+                            right=Side(style='thin'), 
+                            top=Side(style='thin'), 
+                            bottom=Side(style='thin'))
 
 # Автоматическая установка ширины столбцов
 for column in ws.columns:
     max_length = 0
-    column = [cell for cell in column]
+    column_letter = get_column_letter(column[0].column)
     for cell in column:
         try:
-            if len(str(cell.value)) > max_length:
+            if cell.value is not None and len(str(cell.value)) > max_length:
                 max_length = len(str(cell.value))
         except:
             pass
-    adjusted_width = (max_length + 2)  # Немного добавляем для удобства
-    ws.column_dimensions[column[0].column_letter].width = adjusted_width
+    adjusted_width = min(max_length + 2, 50)  # Ограничиваем максимальную ширину
+    ws.column_dimensions[column_letter].width = adjusted_width
 
 # Форматируем формат чисел в 1-й строчке
-ws['C1'].number_format = '## ##0'
-ws['D1'].number_format = '## ##0'
-ws['E1'].number_format = '## ##0.00'
+ws['C1'].number_format = '# ##0'
+ws['D1'].number_format = '# ##0'
+ws['E1'].number_format = '# ##0.00'
 ws['F1'].number_format = '0.000'
-ws['G1'].number_format = '## ##0'
-ws['H1'].number_format = '## ##0'
+ws['G1'].number_format = '# ##0'
+ws['H1'].number_format = '# ##0'
 
 # Определяем колонки для форматирования
-column = ['A', 'C', 'D', 'E', 'F', 'G', 'H'] 
+columns_to_format = ['A', 'C', 'D', 'E', 'F', 'G', 'H'] 
 
 # Проходим по заданным ячейкам
-for col in column: 
-    for row in range(1, ws.max_row + 1):  # Проходим по всем строкам в каждом столбце
-        cell = ws[f'{col}{row}'] # Формируем правильный адрес ячейки
-        cell.alignment = Alignment(horizontal='center', vertical='center') # Выравниваем содержимое
+for col in columns_to_format: 
+    for row in range(1, ws.max_row + 1):
+        cell = ws[f'{col}{row}']
+        cell.alignment = Alignment(horizontal='center', vertical='center')
         
 # Устанавливаем фильтр на первую строку
-ws.auto_filter.ref = "A2:H2"
+ws.auto_filter.ref = f"A2:H{ws.max_row}"
 
 # Сохраняем результаты изменений в файле эксель
 wb.save(f'Отчет за день за_{short_date}.xlsx')
