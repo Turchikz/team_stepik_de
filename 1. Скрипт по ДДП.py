@@ -6,9 +6,12 @@ from IPython.display import display
 Date_report = input("Введите даты для составления отчета: ")
 
 # Чтение файлов Excel
-df_DDP = pd.read_excel('прайс DDP на 27.08.2025.xlsx') # Данные по DDP. Изменяем названия файла на требуемое при необходимости 
-df_TV = pd.read_excel('ТВ+ВСТ.08-2025.xlsx') # Данные по Тв и встройке. Изменяем названия файла на требуемое при необходимости
-df_br_lc = pd.read_excel('SKU_ERP_27.08.2025.xlsx') # Данные по бренду и ЖЦ. Изменяем названия файла на требуемое при необходимости
+# Данные по DDP. Изменяем названия файла на требуемое при необходимости
+df_DDP = pd.read_excel('прайс DDP на 27.08.2025.xlsx')
+# Данные по Тв и встройке. Изменяем названия файла на требуемое при необходимости
+df_TV = pd.read_excel('ТВ+ВСТ.08-2025.xlsx')
+# Данные по бренду и ЖЦ. Изменяем названия файла на требуемое при необходимости
+df_br_lc = pd.read_excel('SKU_ERP_27.08.2025.xlsx')
 
 # Обработка данных из 1С "Прайс DDP"
 df_DDP = df_DDP.dropna(axis=1, how='all')
@@ -38,27 +41,31 @@ df_DDP = df_DDP.merge(
 
 # Заменяем нуловые значения на 0 и создаем итоговый столбец по себестоимости с учетом данных от ком.отдела
 df_DDP['ср.закуп'] = df_DDP['ср.закуп'].fillna(0)
-df_DDP['Себестоимость ИТОГ, руб'] = np.where(df_DDP['ср.закуп'] == 0, df_DDP['Себестоимость, руб'], df_DDP['ср.закуп'])
+df_DDP['Себестоимость ИТОГ, руб'] = np.where(
+    df_DDP['ср.закуп'] == 0, df_DDP['Себестоимость, руб'], df_DDP['ср.закуп'])
 
 # Готовим справочные данные по ЖЦ и Бренду
-df_spr = df_br_lc[['Артикул 1С', 'Рабочее наименование', 'ЖЦ', 'Активность']].copy()
+df_spr = df_br_lc[['Артикул 1С',
+                   'Рабочее наименование', 'ЖЦ', 'Активность']].copy()
 df_spr = df_spr.drop_duplicates(subset=['Артикул 1С'])
 df_spr.columns.values[0] = 'Артикул'
 df_spr.columns.values[1] = 'Номенклатура'
 df_spr.columns = df_spr.columns.str.strip()
-df_spr['Бренд'] = np.where(df_spr['Номенклатура'].str.contains('Polaris', case=False) == True, 'Polaris', 'не_Polaris')
-Articuls = ['10206793', 
-            '10206372', 
-            '10206830', 
-            '10605594', 
-            'ЦБ-00028534', 
-            '10605772', 
-            '10605773', 
-            'ЦБ-00024691', 
-            'ЦБ-00019604', 
-            'ЦБ-00019863', 
-            'ЦБ-00020053'] # Включаем в список товары Поларис, у которых некорректно отображается бренд в исх файле
-df_spr['Бренд'] = np.where(df_spr['Артикул'].isin(Articuls) == True, 'Polaris', df_spr['Бренд'])
+df_spr['Бренд'] = np.where(df_spr['Номенклатура'].str.contains(
+    'Polaris', case=False) == True, 'Polaris', 'не_Polaris')
+Articuls = ['10206793',
+            '10206372',
+            '10206830',
+            '10605594',
+            'ЦБ-00028534',
+            '10605772',
+            '10605773',
+            'ЦБ-00024691',
+            'ЦБ-00019604',
+            'ЦБ-00019863',
+            'ЦБ-00020053']  # Включаем в список товары Поларис, у которых некорректно отображается бренд в исх файле
+df_spr['Бренд'] = np.where(df_spr['Артикул'].isin(
+    Articuls) == True, 'Polaris', df_spr['Бренд'])
 
 # Объединяем со справочными данными. Добавляем данные по ЖЦ и Бренду
 df_DDP = df_DDP.merge(
@@ -67,11 +74,16 @@ df_DDP = df_DDP.merge(
     how='left'
 )
 
-df_report = df_DDP[['Артикул', 'Номенклатура', 'DDP', 'Курс', 'Себестоимость ИТОГ, руб', 'ЖЦ', 'Активность', 'Бренд']].copy()
+df_report = df_DDP[['Артикул', 'Номенклатура', 'DDP', 'Курс',
+                    'Себестоимость ИТОГ, руб', 'ЖЦ', 'Активность', 'Бренд']].copy()
 
 # Сохранение отчета в Excel
-df_report.to_excel(f"DDP_на_{Date_report}.xlsx", sheet_name=f'DDP_{Date_report}', index=False) # Изменяем названия файла на требуемое при необходимости
-df_spr.to_excel(f"СПР.ЖЦ+Бренд_{Date_report}.xlsx", sheet_name=f'ЖЦ+Бренд_{Date_report}', index=False) # Изменяем названия файла на требуемое при необходимости
+# Изменяем названия файла на требуемое при необходимости
+df_report.to_excel(f"DDP_на_{Date_report}.xlsx",
+                   sheet_name=f'DDP_{Date_report}', index=False)
+# Изменяем названия файла на требуемое при необходимости
+df_spr.to_excel(f"СПР.ЖЦ+Бренд_{Date_report}.xlsx",
+                sheet_name=f'ЖЦ+Бренд_{Date_report}', index=False)
 
 
 # НОВАЯ ФУНКЦИЯ: Анализ статистики по данным
@@ -82,33 +94,38 @@ def analyze_data_statistics(df):
     print("\n" + "="*50)
     print("БАЗОВАЯ СТАТИСТИКА ДАННЫХ")
     print("="*50)
-    
+
     # Общая информация
     total_products = len(df)
     total_cost = df['Себестоимость ИТОГ, руб'].sum()
     avg_cost = df['Себестоимость ИТОГ, руб'].mean()
-    
+
     print(f"Общее количество товаров: {total_products}")
     print(f"Общая себестоимость: {total_cost:,.2f} руб")
     print(f"Средняя себестоимость: {avg_cost:,.2f} руб")
-    
+
     # Статистика по брендам
     print(f"\nРаспределение по брендам:")
     brand_stats = df['Бренд'].value_counts()
     for brand, count in brand_stats.items():
         percentage = (count / total_products) * 100
         print(f"  {brand}: {count} товаров ({percentage:.1f}%)")
-    
+
     # Топ-5 самых дорогих товаров
     print(f"\nТоп-5 самых дорогих товаров:")
-    top_expensive = df.nlargest(5, 'Себестоимость ИТОГ, руб')[['Артикул', 'Номенклатура', 'Бренд', 'Себестоимость ИТОГ, руб']]
+    top_expensive = df.nlargest(5, 'Себестоимость ИТОГ, руб')[
+        ['Артикул', 'Номенклатура', 'Бренд', 'Себестоимость ИТОГ, руб']]
     for idx, row in top_expensive.iterrows():
-        print(f"  {row['Артикул']} - {row['Бренд']}: {row['Себестоимость ИТОГ, руб']:,.2f} руб")
+        print(
+            f"  {row['Артикул']} - {row['Бренд']}: {row['Себестоимость ИТОГ, руб']:,.2f} руб")
+
 
 # Вызов новой функции
 analyze_data_statistics(df_report)
 
 
-#df_DDP
+# df_DDP
 display(df_report)
 df_report.info()
+
+# Конец кода Артура Г.
