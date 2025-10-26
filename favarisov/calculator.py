@@ -1,7 +1,10 @@
 def calculator():
+
     """Простой калькулятор основными операциями"""
+
     print("Добро пожаловать в калькулятор!")
     print("Доступные операции: +, -, *, /")
+
     try:
         num1 = float(input("Введите первое число: "))
         operator = input("Введите оператор (+, -, *, /): ")
@@ -25,14 +28,19 @@ def calculator():
         
     except ValueError:
         print("Ошибка: введите корректные числа!")
+
     except ZeroDivisionError as e:
         print(e)
 
 def run_calculator_with_retry():
+
     """Запускает калькулятор с возможностью повторного использования"""
+
     while True:
         calculator()
+
         again = input("\nХотите выполнить еще одно вычисление? (да/нет): ").lower()
+        
         if again != 'да':
             print("Спасибо за использование калькулятора!")
             break
